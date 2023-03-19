@@ -1,7 +1,7 @@
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { PublicKey } from "@solana/web3.js";
+import { Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
 import { initializeKeypair } from "../scripts/initializeKeypair";
 import { getUrls, Network } from "../scripts/networks";
@@ -17,6 +17,7 @@ describe("fluxus", () => {
 
   let mint: PublicKey;
   let vault: PublicKey;
+  let receiverTokenAccount: Keypair;
 
   execSync(
     `anchor idl init --filepath target/idl/fluxus.json ${program.programId}`,
@@ -68,7 +69,7 @@ describe("fluxus", () => {
     }
   });
 
-  it("Create Constant Flux(1):", async () => {
+  it("Create Constant Flux - 1:", async () => {
     try {
       const authority = await initializeKeypair(
         program.provider.connection,
@@ -91,7 +92,7 @@ describe("fluxus", () => {
         mint,
         authority.publicKey
       );
-      const receiverTokenAccount = anchor.web3.Keypair.generate();
+      receiverTokenAccount = anchor.web3.Keypair.generate();
       const [_vault, _vaultBump] = PublicKey.findProgramAddressSync(
         [
           Buffer.from(anchor.utils.bytes.utf8.encode("token-seed")),
@@ -128,7 +129,7 @@ describe("fluxus", () => {
     }
   });
 
-  it("Create Constant Flux(2):", async () => {
+  it("Create Constant Flux - 2:", async () => {
     try {
       const authority = await initializeKeypair(
         program.provider.connection,
@@ -151,15 +152,13 @@ describe("fluxus", () => {
         mint,
         authority.publicKey
       );
-      const receiverTokenAccount = anchor.web3.Keypair.generate();
-      const [_vault, _vaultBump] = PublicKey.findProgramAddressSync(
+      const [vault, _vaultBump] = PublicKey.findProgramAddressSync(
         [
           Buffer.from(anchor.utils.bytes.utf8.encode("token-seed")),
           Buffer.from([2]),
         ],
         program.programId
       );
-      vault = _vault;
       const sig = await program.methods
         .createConstantFlux(new anchor.BN(20 * 10 ** 9), 2, 2)
         .accounts({
@@ -185,6 +184,70 @@ describe("fluxus", () => {
     } catch (error) {
       console.log(error);
       assert.fail(error);
+    }
+  });
+
+  it("Close Constant Flux - 2", async () => {
+    try {
+      const authority = await initializeKeypair(
+        program.provider.connection,
+        "saicharan"
+      );
+      const receiver = await initializeKeypair(
+        program.provider.connection,
+        "receiver"
+      );
+      const [constantFlux] = anchor.web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from(anchor.utils.bytes.utf8.encode("constant_flux")),
+          authority.publicKey.toBuffer(),
+          receiver.publicKey.toBuffer(),
+          Buffer.from([2]),
+        ],
+        program.programId
+      );
+      const authorityTokenAccount = getAssociatedTokenAddressSync(
+        mint,
+        authority.publicKey
+      );
+      const [vault, _vaultBump] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from(anchor.utils.bytes.utf8.encode("token-seed")),
+          Buffer.from([2]),
+        ],
+        program.programId
+      );
+      const [vaultAuthority, _vaultAuthority] =
+        PublicKey.findProgramAddressSync(
+          [Buffer.from(anchor.utils.bytes.utf8.encode("escrow"))],
+          program.programId
+        );
+      const sig = await program.methods
+        .closeConstantFlux(2)
+        .accounts({
+          authority: authority.publicKey,
+          recipient: receiver.publicKey,
+          constantFlux: constantFlux,
+          mint: mint,
+          authorityTokenAccount,
+          vault,
+          vaultAuthority,
+        })
+        .signers([authority])
+        .rpc();
+      console.log(
+        "Signature:",
+        getUrls(Network[program.provider.connection.rpcEndpoint], sig, "tx")
+          .explorer
+      );
+      await program.account.constantFlux.fetch(constantFlux);
+      assert.fail("Shouldn't have came through!");
+    } catch (error) {
+      if (error.message.includes("Account does not exist")) {
+        assert(true);
+      } else {
+        console.log(error);
+      }
     }
   });
 });

@@ -1,5 +1,5 @@
 mod account;
-mod errors;
+mod error;
 mod state;
 
 use crate::account::*;
@@ -44,6 +44,26 @@ pub mod fluxus {
         token::transfer(
             ctx.accounts.into_transfer_to_vault_context(),
             ctx.accounts.constant_flux.amount,
+        )?;
+        Ok(())
+    }
+
+    pub fn close_constant_flux(ctx: Context<CloseConstantFlux>, _flux_nonce: u8) -> Result<()> {
+        let accounts = ctx.accounts;
+        let vault = &mut accounts.vault.clone();
+        let (_vault_authority, vault_authority_bump) =
+            Pubkey::find_program_address(&[VAULT_AUTHORITY_SEED], ctx.program_id);
+        let authority_seeds = &[&VAULT_AUTHORITY_SEED[..], &[vault_authority_bump]];
+        token::transfer(
+            accounts
+                .into_transfer_to_authority_context()
+                .with_signer(&[&authority_seeds[..]]),
+            vault.amount,
+        )?;
+        token::close_account(
+            accounts
+                .into_close_token_account_context()
+                .with_signer(&[&authority_seeds[..]]),
         )?;
         Ok(())
     }
