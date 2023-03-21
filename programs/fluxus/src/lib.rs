@@ -3,11 +3,12 @@ mod error;
 mod state;
 
 use crate::account::*;
+// use crate::error::FluxusErrors;
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 use anchor_spl::token::spl_token::instruction::AuthorityType;
 
-declare_id!("GYdBrTgUFvAfdgYVNK3bUudrMoaFQ6CjvRCaA7SMfMj8");
+declare_id!("4XvNtZ1Z9GZ5YyZDJaAxC5TSFGHx1McbL5G2YphGQ1EG");
 
 #[program]
 pub mod fluxus {
@@ -65,6 +66,63 @@ pub mod fluxus {
                 .into_close_token_account_context()
                 .with_signer(&[&authority_seeds[..]]),
         )?;
+        Ok(())
+    }
+
+    pub fn claim_constant_flux(ctx: Context<ClaimConstantFlux>, _flux_nonce: u8) -> Result<()> {
+        let vault = ctx.accounts.vault.clone();
+        let (_vault_authority, vault_authority_bump) =
+            Pubkey::find_program_address(&[VAULT_AUTHORITY_SEED], ctx.program_id);
+        let authority_seeds = &[&VAULT_AUTHORITY_SEED[..], &[vault_authority_bump]];
+        let constant_flux = ctx.accounts.constant_flux.clone();
+        let start_unix_timestamp = constant_flux.start_unix_timestamp;
+        let end_unix_timestamp = constant_flux.end_unit_timestamp;
+        let current_amount = constant_flux.amount;
+        let current_unix_timestamp = Clock::get().unwrap().unix_timestamp;
+        // let mock_current_unix_timestamp = current_unix_timestamp + (3 * 24 * 60 * 60);
+        // if mock_current_unix_timestamp >= end_unix_timestamp {
+        if current_unix_timestamp >= end_unix_timestamp {
+            token::transfer(
+                ctx.accounts
+                    .into_transfer_to_receiver_context()
+                    .with_signer(&[&authority_seeds[..]]),
+                vault.amount,
+            )?;
+            ctx.accounts.into_close_constant_flux_account()?;
+            token::close_account(
+                ctx.accounts
+                    .into_close_token_account_context()
+                    .with_signer(&[&authority_seeds[..]]),
+            )?;
+        } else {
+            // using start_unix_timestamp, end_unix_timestamp & current_unix_timestamp calculate elapsed timestamp in basis point percent
+            let elapsed_time = current_unix_timestamp
+                .checked_sub(start_unix_timestamp)
+                .unwrap();
+            let total_time = end_unix_timestamp
+                .checked_sub(start_unix_timestamp)
+                .unwrap();
+            let elapsed_percent = elapsed_time
+                .checked_mul(10_000)
+                .unwrap()
+                .checked_div(total_time)
+                .unwrap();
+            let streamable_tokens = vault
+                .amount
+                .checked_div(10_000)
+                .unwrap()
+                .checked_mul(elapsed_percent as u64)
+                // .checked_mul(2_300)
+                .unwrap();
+            let remaining_tokens = current_amount - streamable_tokens;
+            token::transfer(
+                ctx.accounts
+                    .into_transfer_to_receiver_context()
+                    .with_signer(&[&authority_seeds[..]]),
+                streamable_tokens,
+            )?;
+            ctx.accounts.constant_flux.amount = remaining_tokens;
+        }
         Ok(())
     }
 }

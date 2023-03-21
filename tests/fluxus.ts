@@ -8,6 +8,7 @@ import { getUrls, Network } from "../scripts/networks";
 import { initializeMint, mintTokens } from "../scripts/splToken";
 import { Fluxus } from "../target/types/fluxus";
 import { execSync } from "child_process";
+import { sleep } from "../scripts";
 
 describe("fluxus", () => {
   // Configure the client to use the local cluster.
@@ -40,7 +41,6 @@ describe("fluxus", () => {
       );
       mint = _mint;
     } catch (error) {
-      console.log(error);
       assert.fail(error);
     }
   });
@@ -64,7 +64,6 @@ describe("fluxus", () => {
         100
       );
     } catch (error) {
-      console.log(error);
       assert.fail(error);
     }
   });
@@ -124,7 +123,6 @@ describe("fluxus", () => {
       );
       console.log(fetchedData);
     } catch (error) {
-      console.log(error);
       assert.fail(error);
     }
   });
@@ -182,12 +180,11 @@ describe("fluxus", () => {
       );
       console.log(fetchedData);
     } catch (error) {
-      console.log(error);
       assert.fail(error);
     }
   });
 
-  it("Close Constant Flux - 2", async () => {
+  it("Close Constant Flux - 2:", async () => {
     try {
       const authority = await initializeKeypair(
         program.provider.connection,
@@ -248,6 +245,59 @@ describe("fluxus", () => {
       } else {
         console.log(error);
       }
+    }
+  });
+
+  it("Claim Constant Flux - 1:", async () => {
+    try {
+      await sleep(500);
+      const authority = await initializeKeypair(
+        program.provider.connection,
+        "saicharan"
+      );
+      const receiver = await initializeKeypair(
+        program.provider.connection,
+        "receiver"
+      );
+      const [constantFlux] = anchor.web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from(anchor.utils.bytes.utf8.encode("constant_flux")),
+          authority.publicKey.toBuffer(),
+          receiver.publicKey.toBuffer(),
+          Buffer.from([1]),
+        ],
+        program.programId
+      );
+      const [vaultAuthority, _vaultAuthority] =
+        PublicKey.findProgramAddressSync(
+          [Buffer.from(anchor.utils.bytes.utf8.encode("escrow"))],
+          program.programId
+        );
+      const sig = await program.methods
+        .claimConstantFlux(1)
+        .accounts({
+          authority: authority.publicKey,
+          recipient: receiver.publicKey,
+          constantFlux,
+          mint,
+          recipientTokenAccount: receiverTokenAccount.publicKey,
+          vaultAuthority,
+          vault,
+        })
+        .signers([receiver])
+        .rpc();
+      console.log(
+        "Signature:",
+        getUrls(Network[program.provider.connection.rpcEndpoint], sig, "tx")
+          .explorer
+      );
+      const fetchedData = await program.account.constantFlux.fetch(
+        constantFlux
+      );
+      console.log(fetchedData);
+    } catch (error) {
+      console.log(error);
+      assert.fail(error);
     }
   });
 });

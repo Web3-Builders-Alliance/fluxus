@@ -144,3 +144,77 @@ impl<'info> CloseConstantFlux<'info> {
         CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
     }
 }
+
+#[derive(Accounts)]
+#[instruction(flux_nonce: u8)]
+pub struct ClaimConstantFlux<'info> {
+    /// CHECK: authority is the creator of the flux
+    #[account(mut)]
+    pub authority: AccountInfo<'info>,
+    /// recipient wallet account
+    #[account(mut)]
+    pub recipient: Signer<'info>,
+    /// constant flux pda
+    #[account(
+        mut,
+        seeds = [
+            b"constant_flux",
+            authority.key().as_ref(),
+            recipient.key().as_ref(),
+            &[flux_nonce],
+        ],
+        bump,
+        has_one = authority,
+    )]
+    pub constant_flux: Account<'info, ConstantFlux>,
+    /// token mint which receiver wants to claim
+    pub mint: Account<'info, Mint>,
+    /// recipient token account w.r.t mint
+    #[account(
+        mut,
+        token::mint = mint,
+        token::authority = recipient,
+    )]
+    pub recipient_token_account: Account<'info, TokenAccount>,
+    /// CHECK: vault authority
+    pub vault_authority: AccountInfo<'info>,
+    /// vault token account that holds tokens
+    #[account(
+        mut,
+        seeds = [b"token-seed".as_ref(), &[flux_nonce]],
+        bump,
+        token::mint = mint,
+        token::authority = vault_authority,
+    )]
+    pub vault: Account<'info, TokenAccount>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+}
+
+impl<'info> ClaimConstantFlux<'info> {
+    pub fn into_transfer_to_receiver_context(
+        &self,
+    ) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.vault.to_account_info(),
+            to: self.recipient_token_account.to_account_info(),
+            authority: self.vault_authority.to_account_info(),
+        };
+        CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
+    }
+
+    pub fn into_close_constant_flux_account(&self) -> Result<()> {
+        AccountsClose::close(&self.constant_flux, self.authority.to_account_info())
+    }
+
+    pub fn into_close_token_account_context(
+        &self,
+    ) -> CpiContext<'_, '_, '_, 'info, CloseAccount<'info>> {
+        let cpi_accounts = CloseAccount {
+            account: self.vault.to_account_info(),
+            authority: self.vault_authority.to_account_info(),
+            destination: self.recipient_token_account.to_account_info(),
+        };
+        CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
+    }
+}

@@ -2,7 +2,7 @@
 seeds = false
 skip-lint = false
 [programs.localnet]
-fluxus = "GYdBrTgUFvAfdgYVNK3bUudrMoaFQ6CjvRCaA7SMfMj8"
+fluxus = "4XvNtZ1Z9GZ5YyZDJaAxC5TSFGHx1McbL5G2YphGQ1EG"
 
 [registry]
 url = "https://api.apr.dev"
