@@ -1,4 +1,4 @@
-use crate::state::ConstantFlux;
+use crate::state::{ConstantFlux, InstantFlux};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{CloseAccount, Mint, SetAuthority, Token, TokenAccount, Transfer};
 
@@ -217,4 +217,37 @@ impl<'info> ClaimConstantFlux<'info> {
         };
         CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
     }
+}
+
+#[derive(Accounts)]
+#[instruction(amount: u64, flux_nonce: u8)]
+pub struct CreateInstantFlux<'info> {
+    /// authority is the creator of the flux
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    /// instant flux pda to be created
+    #[account(
+        init,
+        seeds = [
+            b"instant_flux",
+            authority.key().as_ref(),
+            &[flux_nonce],
+        ],
+        payer = authority,
+        bump,
+        space = 8 + InstantFlux::INIT_SPACE,
+    )]
+    pub instant_flux: Account<'info, InstantFlux>,
+    /// token mint which authority wants to stream
+    pub mint: Account<'info, Mint>,
+    /// authority token account w.r.t mint
+    #[account(
+        mut,
+        token::mint = mint,
+        token::authority = authority,
+        constraint = authority_token_account.amount >= amount
+    )]
+    pub authority_token_account: Account<'info, TokenAccount>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
 }

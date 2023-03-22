@@ -3,10 +3,12 @@ mod error;
 mod state;
 
 use crate::account::*;
-// use crate::error::FluxusErrors;
+use crate::error::FluxusErrors;
+use crate::state::Recipient;
 use anchor_lang::prelude::*;
+use anchor_lang::system_program;
 use anchor_spl::token;
-use anchor_spl::token::spl_token::instruction::AuthorityType;
+use anchor_spl::token::{spl_token::instruction::AuthorityType, TokenAccount, Transfer};
 
 declare_id!("4XvNtZ1Z9GZ5YyZDJaAxC5TSFGHx1McbL5G2YphGQ1EG");
 
@@ -122,6 +124,56 @@ pub mod fluxus {
                 streamable_tokens,
             )?;
             ctx.accounts.constant_flux.amount = remaining_tokens;
+        }
+        Ok(())
+    }
+
+    pub fn create_instant_flux<'info>(
+        ctx: Context<'_, '_, '_, 'info, CreateInstantFlux<'info>>,
+        amount: u64,
+        _flux_nonce: u8,
+        shares: Vec<u16>,
+    ) -> Result<()> {
+        let total_shares: u16 = shares.iter().sum();
+        require!(total_shares == 10000, FluxusErrors::InvalidShares);
+        let instant_flux = &mut ctx.accounts.instant_flux;
+        instant_flux.authority = ctx.accounts.authority.key();
+        instant_flux.authority_token_account = ctx.accounts.authority_token_account.clone().key();
+        instant_flux.mint = ctx.accounts.mint.key();
+        instant_flux.total_amount = amount;
+        let remaining_accounts = &mut ctx.remaining_accounts.into_iter();
+        let remaining_account_count = remaining_accounts.len();
+        require!(
+            remaining_account_count / 2 == shares.len(),
+            FluxusErrors::InvalidLength
+        );
+        let remaining_accounts: Vec<&AccountInfo> = ctx.remaining_accounts.into_iter().collect();
+        let recipient_count = shares.len();
+        for i in 0..recipient_count {
+            let recipient = remaining_accounts[i*2];
+            let recipient_token_account = remaining_accounts[i*2 + 1];
+            let share = shares[i];
+            require!(
+                recipient.owner.key() == system_program::ID,
+                FluxusErrors::InvalidOwner
+            );
+            require!(recipient_token_account.owner.key() == token::ID, FluxusErrors::InvalidOwner);
+            let recipient_token_account_data = TokenAccount::try_deserialize_unchecked(&mut recipient_token_account.data.borrow_mut().as_ref())?;
+            require!(recipient_token_account_data.mint == ctx.accounts.mint.key(), FluxusErrors::InvalidMint);
+            require!(recipient_token_account_data.owner == recipient.key(), FluxusErrors::InvalidAuthority);
+            instant_flux.recipients.push(Recipient {
+                address: recipient.key(),
+                token_account: recipient_token_account.key(),
+                share,
+            });
+            let cpi_accounts = Transfer {
+                from: ctx.accounts.authority_token_account.to_account_info(),
+                to: recipient_token_account.to_account_info(),
+                authority: ctx.accounts.authority.to_account_info(),
+            };
+            let cpi_context = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
+            let transferable_amount = amount.checked_div(10_000).unwrap().checked_mul(u64::from(share)).unwrap();
+            token::transfer(cpi_context, transferable_amount)?;
         }
         Ok(())
     }

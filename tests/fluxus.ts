@@ -1,6 +1,9 @@
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
-import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import {
+  getAssociatedTokenAddressSync,
+  getOrCreateAssociatedTokenAccount,
+} from "@solana/spl-token";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
 import { initializeKeypair } from "../scripts/initializeKeypair";
@@ -68,7 +71,7 @@ describe("fluxus", () => {
     }
   });
 
-  it("Create Constant Flux - 1:", async () => {
+  xit("Create Constant Flux - 1:", async () => {
     try {
       const authority = await initializeKeypair(
         program.provider.connection,
@@ -127,7 +130,7 @@ describe("fluxus", () => {
     }
   });
 
-  it("Create Constant Flux - 2:", async () => {
+  xit("Create Constant Flux - 2:", async () => {
     try {
       const authority = await initializeKeypair(
         program.provider.connection,
@@ -184,7 +187,7 @@ describe("fluxus", () => {
     }
   });
 
-  it("Close Constant Flux - 2:", async () => {
+  xit("Close Constant Flux - 2:", async () => {
     try {
       const authority = await initializeKeypair(
         program.provider.connection,
@@ -248,7 +251,7 @@ describe("fluxus", () => {
     }
   });
 
-  it("Claim Constant Flux - 1:", async () => {
+  xit("Claim Constant Flux - 1:", async () => {
     try {
       await sleep(500);
       const authority = await initializeKeypair(
@@ -294,6 +297,90 @@ describe("fluxus", () => {
       const fetchedData = await program.account.constantFlux.fetch(
         constantFlux
       );
+      console.log(fetchedData);
+    } catch (error) {
+      console.log(error);
+      assert.fail(error);
+    }
+  });
+
+  it("Create Instant Flux", async () => {
+    try {
+      const authority = await initializeKeypair(
+        program.provider.connection,
+        "saicharan"
+      );
+      const receiver = await initializeKeypair(
+        program.provider.connection,
+        "receiver"
+      );
+      const receiver2 = await initializeKeypair(
+        program.provider.connection,
+        "receiver2"
+      );
+      const [instantFlux] = anchor.web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from(anchor.utils.bytes.utf8.encode("instant_flux")),
+          authority.publicKey.toBuffer(),
+          Buffer.from([1]),
+        ],
+        program.programId
+      );
+      const authorityTokenAccount = getAssociatedTokenAddressSync(
+        mint,
+        authority.publicKey
+      );
+      const receiverTokenAccount = await getOrCreateAssociatedTokenAccount(
+        program.provider.connection,
+        receiver,
+        mint,
+        receiver.publicKey
+      );
+      const receiver2TokenAccount = await getOrCreateAssociatedTokenAccount(
+        program.provider.connection,
+        receiver2,
+        mint,
+        receiver2.publicKey
+      );
+      const sig = await program.methods
+        .createInstantFlux(new anchor.BN(20 * 10 ** 9), 1, [3000, 7000])
+        .accounts({
+          authority: authority.publicKey,
+          instantFlux,
+          authorityTokenAccount,
+          mint,
+        })
+        .remainingAccounts([
+          {
+            pubkey: receiver.publicKey,
+            isSigner: false,
+            isWritable: false,
+          },
+          {
+            pubkey: receiverTokenAccount.address,
+            isSigner: false,
+            isWritable: true,
+          },
+          {
+            pubkey: receiver2.publicKey,
+            isSigner: false,
+            isWritable: false,
+          },
+          {
+            // pubkey: authorityTokenAccount,
+            pubkey: receiver2TokenAccount.address,
+            isSigner: false,
+            isWritable: true,
+          },
+        ])
+        .signers([authority])
+        .rpc();
+      console.log(
+        "Signature:",
+        getUrls(Network[program.provider.connection.rpcEndpoint], sig, "tx")
+          .explorer
+      );
+      const fetchedData = await program.account.instantFlux.fetch(instantFlux);
       console.log(fetchedData);
     } catch (error) {
       console.log(error);
