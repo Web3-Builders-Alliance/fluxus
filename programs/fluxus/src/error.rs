@@ -12,4 +12,6 @@ pub enum FluxusErrors {
     InvalidShares,
     #[msg("Invalid mint")]
     InvalidMint,
+    #[msg("Recipients limit exceeded")]
+    RecipientsLimitExceeded,
 }
