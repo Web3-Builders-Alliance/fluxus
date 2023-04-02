@@ -21,7 +21,7 @@ pub mod fluxus {
     pub fn create_constant_flux(
         ctx: Context<CreateConstantFlux>,
         amount: u64,
-        _flux_nonce: u8,
+        _flux_id: String,
         days: u32,
     ) -> Result<()> {
         let constant_flux = &mut ctx.accounts.constant_flux;
@@ -33,8 +33,10 @@ pub mod fluxus {
         constant_flux.recipient_token_account = ctx.accounts.recipient_token_account.key();
         constant_flux.mint = ctx.accounts.mint.key();
         constant_flux.start_unix_timestamp = now;
-        constant_flux.end_unit_timestamp = (i64::from(days) * 24 * 60 * 60) + now;
-        constant_flux.amount = amount;
+        constant_flux.last_updated_unix_timestamp = now;
+        constant_flux.end_unix_timestamp = (i64::from(days) * 24 * 60 * 60) + now;
+        constant_flux.total_amount = amount;
+        constant_flux.streamable_amount = amount;
         msg!("{:?}", constant_flux);
         let (vault_authority, _vault_authority_bump) =
             Pubkey::find_program_address(&[VAULT_AUTHORITY_SEED], ctx.program_id);
@@ -45,12 +47,12 @@ pub mod fluxus {
         )?;
         token::transfer(
             ctx.accounts.into_transfer_to_vault_context(),
-            ctx.accounts.constant_flux.amount,
+            ctx.accounts.constant_flux.total_amount,
         )?;
         Ok(())
     }
 
-    pub fn close_constant_flux(ctx: Context<CloseConstantFlux>, _flux_nonce: u8) -> Result<()> {
+    pub fn close_constant_flux(ctx: Context<CloseConstantFlux>, _flux_id: String) -> Result<()> {
         let accounts = ctx.accounts;
         let vault = &mut accounts.vault.clone();
         let (_vault_authority, vault_authority_bump) =
@@ -70,15 +72,16 @@ pub mod fluxus {
         Ok(())
     }
 
-    pub fn claim_constant_flux(ctx: Context<ClaimConstantFlux>, _flux_nonce: u8) -> Result<()> {
+    pub fn claim_constant_flux(ctx: Context<ClaimConstantFlux>, _flux_id: String) -> Result<()> {
         let vault = ctx.accounts.vault.clone();
         let (_vault_authority, vault_authority_bump) =
             Pubkey::find_program_address(&[VAULT_AUTHORITY_SEED], ctx.program_id);
         let authority_seeds = &[&VAULT_AUTHORITY_SEED[..], &[vault_authority_bump]];
         let constant_flux = ctx.accounts.constant_flux.clone();
+        let now = Clock::get()?.unix_timestamp;
         let start_unix_timestamp = constant_flux.start_unix_timestamp;
-        let end_unix_timestamp = constant_flux.end_unit_timestamp;
-        let current_amount = constant_flux.amount;
+        let end_unix_timestamp = constant_flux.end_unix_timestamp;
+        let current_amount = constant_flux.streamable_amount;
         let current_unix_timestamp = Clock::get().unwrap().unix_timestamp;
         // let mock_current_unix_timestamp = current_unix_timestamp + (3 * 24 * 60 * 60);
         // if mock_current_unix_timestamp >= end_unix_timestamp {
@@ -122,7 +125,8 @@ pub mod fluxus {
                     .with_signer(&[&authority_seeds[..]]),
                 streamable_tokens,
             )?;
-            ctx.accounts.constant_flux.amount = remaining_tokens;
+            ctx.accounts.constant_flux.streamable_amount = remaining_tokens;
+            ctx.accounts.constant_flux.last_updated_unix_timestamp = now;
         }
         Ok(())
     }
@@ -130,7 +134,6 @@ pub mod fluxus {
     pub fn instant_distribution_flux<'info>(
         ctx: Context<'_, '_, '_, 'info, InstantDistributionFlux<'info>>,
         amount: u64,
-        _flux_nonce: u8,
         shares: Vec<u16>,
     ) -> Result<()> {
         require!(shares.len() <= 5, FluxusErrors::RecipientsLimitExceeded);

@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{CloseAccount, Mint, SetAuthority, Token, TokenAccount, Transfer};
 
 #[derive(Accounts)]
-#[instruction(amount: u64, flux_nonce: u8)]
+#[instruction(amount: u64, flux_id: String)]
 pub struct CreateConstantFlux<'info> {
     /// authority is the creator of the flux
     #[account(mut)]
@@ -17,7 +17,7 @@ pub struct CreateConstantFlux<'info> {
             b"constant_flux",
             authority.key().as_ref(),
             recipient.key().as_ref(),
-            &[flux_nonce],
+            flux_id.as_bytes(),
         ],
         payer = authority,
         bump,
@@ -36,8 +36,6 @@ pub struct CreateConstantFlux<'info> {
     pub authority_token_account: Account<'info, TokenAccount>,
     /// recipient token account w.r.t mint
     #[account(
-        init_if_needed,
-        payer = authority,
         token::mint = mint,
         token::authority = recipient,
     )]
@@ -45,7 +43,7 @@ pub struct CreateConstantFlux<'info> {
     /// vault token account that holds tokens
     #[account(
         init,
-        seeds = [b"token-seed".as_ref(), &[flux_nonce]],
+        seeds = [b"token-seed".as_ref(), flux_id.as_bytes()],
         bump,
         payer = authority,
         token::mint = mint,
@@ -76,7 +74,7 @@ impl<'info> CreateConstantFlux<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(flux_nonce: u8)]
+#[instruction(flux_id: String)]
 pub struct CloseConstantFlux<'info> {
     /// authority is the creator of the flux
     #[account(mut)]
@@ -90,7 +88,7 @@ pub struct CloseConstantFlux<'info> {
             b"constant_flux",
             authority.key().as_ref(),
             recipient.key().as_ref(),
-            &[flux_nonce],
+            flux_id.as_bytes(),
         ],
         bump,
         has_one = authority,
@@ -111,7 +109,7 @@ pub struct CloseConstantFlux<'info> {
     /// vault token account that holds tokens
     #[account(
         mut,
-        seeds = [b"token-seed".as_ref(), &[flux_nonce]],
+        seeds = [b"token-seed".as_ref(), flux_id.as_bytes()],
         bump,
         token::mint = mint,
         token::authority = vault_authority,
@@ -146,7 +144,7 @@ impl<'info> CloseConstantFlux<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(flux_nonce: u8)]
+#[instruction(flux_id: String)]
 pub struct ClaimConstantFlux<'info> {
     /// CHECK: authority is the creator of the flux
     #[account(mut)]
@@ -161,7 +159,7 @@ pub struct ClaimConstantFlux<'info> {
             b"constant_flux",
             authority.key().as_ref(),
             recipient.key().as_ref(),
-            &[flux_nonce],
+            flux_id.as_bytes(),
         ],
         bump,
         has_one = authority,
@@ -181,7 +179,7 @@ pub struct ClaimConstantFlux<'info> {
     /// vault token account that holds tokens
     #[account(
         mut,
-        seeds = [b"token-seed".as_ref(), &[flux_nonce]],
+        seeds = [b"token-seed".as_ref(), flux_id.as_bytes()],
         bump,
         token::mint = mint,
         token::authority = vault_authority,
@@ -220,7 +218,7 @@ impl<'info> ClaimConstantFlux<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(amount: u64, flux_nonce: u8)]
+#[instruction(amount: u64)]
 pub struct InstantDistributionFlux<'info> {
     /// authority is the creator of the flux
     #[account(mut)]

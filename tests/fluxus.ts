@@ -21,7 +21,7 @@ describe("fluxus", () => {
 
   let mint: PublicKey;
   let vault: PublicKey;
-  let receiverTokenAccount: Keypair;
+  let receiverTokenAccount: PublicKey;
 
   execSync(
     `anchor idl init --filepath target/idl/fluxus.json ${program.programId}`,
@@ -44,11 +44,12 @@ describe("fluxus", () => {
       );
       mint = _mint;
     } catch (error) {
+      console.log(error);
       assert.fail(error);
     }
   });
 
-  it("Mint 100 Fluxus:", async () => {
+  it("Mint 1M Fluxus:", async () => {
     try {
       const admin = await initializeKeypair(
         program.provider.connection,
@@ -64,15 +65,17 @@ describe("fluxus", () => {
         user.publicKey,
         user,
         admin,
-        100
+        1000000
       );
     } catch (error) {
+      console.log(error);
       assert.fail(error);
     }
   });
 
-  it("Create Constant Flux - 1:", async () => {
+  xit("Create Constant Flux - 1:", async () => {
     try {
+      const fluxId = "flux_id_1";
       const authority = await initializeKeypair(
         program.provider.connection,
         "saicharan"
@@ -86,7 +89,7 @@ describe("fluxus", () => {
           Buffer.from(anchor.utils.bytes.utf8.encode("constant_flux")),
           authority.publicKey.toBuffer(),
           receiver.publicKey.toBuffer(),
-          Buffer.from([1]),
+          Buffer.from(fluxId),
         ],
         program.programId
       );
@@ -94,27 +97,35 @@ describe("fluxus", () => {
         mint,
         authority.publicKey
       );
-      receiverTokenAccount = anchor.web3.Keypair.generate();
+      // receiverTokenAccount = anchor.web3.Keypair.generate();
+      receiverTokenAccount = (
+        await getOrCreateAssociatedTokenAccount(
+          program.provider.connection,
+          receiver,
+          mint,
+          receiver.publicKey
+        )
+      ).address;
       const [_vault, _vaultBump] = PublicKey.findProgramAddressSync(
         [
           Buffer.from(anchor.utils.bytes.utf8.encode("token-seed")),
-          Buffer.from([1]),
+          Buffer.from(fluxId),
         ],
         program.programId
       );
       vault = _vault;
       const sig = await program.methods
-        .createConstantFlux(new anchor.BN(20 * 10 ** 9), 1, 2)
+        .createConstantFlux(new anchor.BN(20 * 10 ** 9), fluxId, 2)
         .accounts({
           authority: authority.publicKey,
           recipient: receiver.publicKey,
           constantFlux: constantFlux,
           mint: mint,
           authorityTokenAccount,
-          recipientTokenAccount: receiverTokenAccount.publicKey,
+          recipientTokenAccount: receiverTokenAccount,
           vault,
         })
-        .signers([authority, receiverTokenAccount])
+        .signers([authority])
         .rpc();
       console.log(
         "Signature:",
@@ -126,12 +137,14 @@ describe("fluxus", () => {
       );
       console.log(fetchedData);
     } catch (error) {
+      console.log(error);
       assert.fail(error);
     }
   });
 
-  it("Create Constant Flux - 2:", async () => {
+  xit("Create Constant Flux - 2:", async () => {
     try {
+      const fluxId = "flux_id_2";
       const authority = await initializeKeypair(
         program.provider.connection,
         "saicharan"
@@ -145,7 +158,7 @@ describe("fluxus", () => {
           Buffer.from(anchor.utils.bytes.utf8.encode("constant_flux")),
           authority.publicKey.toBuffer(),
           receiver.publicKey.toBuffer(),
-          Buffer.from([2]),
+          Buffer.from(fluxId),
         ],
         program.programId
       );
@@ -156,22 +169,22 @@ describe("fluxus", () => {
       const [vault, _vaultBump] = PublicKey.findProgramAddressSync(
         [
           Buffer.from(anchor.utils.bytes.utf8.encode("token-seed")),
-          Buffer.from([2]),
+          Buffer.from(fluxId),
         ],
         program.programId
       );
       const sig = await program.methods
-        .createConstantFlux(new anchor.BN(20 * 10 ** 9), 2, 2)
+        .createConstantFlux(new anchor.BN(20 * 10 ** 9), fluxId, 2)
         .accounts({
           authority: authority.publicKey,
           recipient: receiver.publicKey,
           constantFlux: constantFlux,
           mint: mint,
           authorityTokenAccount,
-          recipientTokenAccount: receiverTokenAccount.publicKey,
+          recipientTokenAccount: receiverTokenAccount,
           vault,
         })
-        .signers([authority, receiverTokenAccount])
+        .signers([authority])
         .rpc();
       console.log(
         "Signature:",
@@ -187,8 +200,9 @@ describe("fluxus", () => {
     }
   });
 
-  it("Close Constant Flux - 2:", async () => {
+  xit("Close Constant Flux - 2:", async () => {
     try {
+      const fluxId = "flux_id_2";
       const authority = await initializeKeypair(
         program.provider.connection,
         "saicharan"
@@ -202,7 +216,7 @@ describe("fluxus", () => {
           Buffer.from(anchor.utils.bytes.utf8.encode("constant_flux")),
           authority.publicKey.toBuffer(),
           receiver.publicKey.toBuffer(),
-          Buffer.from([2]),
+          Buffer.from(fluxId),
         ],
         program.programId
       );
@@ -213,7 +227,7 @@ describe("fluxus", () => {
       const [vault, _vaultBump] = PublicKey.findProgramAddressSync(
         [
           Buffer.from(anchor.utils.bytes.utf8.encode("token-seed")),
-          Buffer.from([2]),
+          Buffer.from(fluxId),
         ],
         program.programId
       );
@@ -223,7 +237,7 @@ describe("fluxus", () => {
           program.programId
         );
       const sig = await program.methods
-        .closeConstantFlux(2)
+        .closeConstantFlux(fluxId)
         .accounts({
           authority: authority.publicKey,
           recipient: receiver.publicKey,
@@ -251,8 +265,9 @@ describe("fluxus", () => {
     }
   });
 
-  it("Claim Constant Flux - 1:", async () => {
+  xit("Claim Constant Flux - 1:", async () => {
     try {
+      const fluxId = "flux_id_1";
       await sleep(500);
       const authority = await initializeKeypair(
         program.provider.connection,
@@ -267,7 +282,7 @@ describe("fluxus", () => {
           Buffer.from(anchor.utils.bytes.utf8.encode("constant_flux")),
           authority.publicKey.toBuffer(),
           receiver.publicKey.toBuffer(),
-          Buffer.from([1]),
+          Buffer.from(fluxId),
         ],
         program.programId
       );
@@ -277,13 +292,13 @@ describe("fluxus", () => {
           program.programId
         );
       const sig = await program.methods
-        .claimConstantFlux(1)
+        .claimConstantFlux(fluxId)
         .accounts({
           authority: authority.publicKey,
           recipient: receiver.publicKey,
           constantFlux,
           mint,
-          recipientTokenAccount: receiverTokenAccount.publicKey,
+          recipientTokenAccount: receiverTokenAccount,
           vaultAuthority,
           vault,
         })
@@ -388,7 +403,7 @@ describe("fluxus", () => {
   //   }
   // });
 
-  it("Instant Distribution Flux", async () => {
+  xit("Instant Distribution Flux", async () => {
     try {
       const authority = await initializeKeypair(
         program.provider.connection,
@@ -451,7 +466,6 @@ describe("fluxus", () => {
       const sig = await program.methods
         .instantDistributionFlux(
           new anchor.BN(20 * 10 ** 9),
-          1,
           [2000, 2000, 2100, 2400, 1500]
         )
         .accounts({

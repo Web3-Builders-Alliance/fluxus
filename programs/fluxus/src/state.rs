@@ -17,7 +17,11 @@ pub struct ConstantFlux {
     // timestamp at which flux will start
     pub start_unix_timestamp: i64,
     // timestamp at which flux will stop
-    pub end_unit_timestamp: i64,
-    // amount of tokens to transfer
-    pub amount: u64,
+    pub end_unix_timestamp: i64,
+    // timestamp at which flux was updated
+    pub last_updated_unix_timestamp: i64,
+    // total amount of tokens to be transferred
+    pub total_amount: u64,
+    // remaining amount of token to be transferred
+    pub streamable_amount: u64,
 }
