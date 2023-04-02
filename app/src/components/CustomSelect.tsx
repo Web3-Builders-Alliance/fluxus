@@ -100,7 +100,7 @@ const CustomSelect: React.FC<Props> = ({
       <Controller
         control={control}
         name={name}
-        defaultValue={options[0].value}
+        defaultValue={options[0]?.value}
         render={({ field: { onChange, onBlur, value, name } }) => (
           <FormControl isInvalid={!!error}>
             <FormLabel fontSize={"14"} color="gray.400">
