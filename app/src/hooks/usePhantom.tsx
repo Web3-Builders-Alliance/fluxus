@@ -5,7 +5,7 @@ const usePhantom = () => {
 
   useEffect(() => {
     // @ts-ignore
-    if (window!.solana) {
+    if (typeof window !== "undefined" && window!.solana) {
       setIsPhantom(true);
     }
   }, []);

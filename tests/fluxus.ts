@@ -23,10 +23,10 @@ describe("fluxus", () => {
   let vault: PublicKey;
   let receiverTokenAccount: PublicKey;
 
-  execSync(
-    `anchor idl init --filepath target/idl/fluxus.json ${program.programId}`,
-    { stdio: "inherit" }
-  );
+  // execSync(
+  //   `anchor idl init --filepath target/idl/fluxus.json ${program.programId}`,
+  //   { stdio: "inherit" }
+  // );
 
   it("Initialize Mint:", async () => {
     try {
