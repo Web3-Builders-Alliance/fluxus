@@ -8,7 +8,7 @@ import {
 } from "@chakra-ui/react";
 import { useState } from "react";
 // @ts-ignore
-import DateTimePicker from "react-datetime-picker/dist/entry.nostyle";
+// import DateTimePicker from "react-datetime-picker/dist/entry.nostyle";
 import { Control, Controller, FieldValues } from "react-hook-form";
 
 interface Props {
@@ -103,7 +103,7 @@ const CustomDateTimePicker: React.FC<Props> = ({
         },
       }}
     >
-      <Controller
+      {/* <Controller
         control={control}
         name={name}
         render={({ field: { onChange, value }, fieldState: { error } }) => (
@@ -127,7 +127,7 @@ const CustomDateTimePicker: React.FC<Props> = ({
             <FormErrorMessage>{error && error.message}</FormErrorMessage>
           </FormControl>
         )}
-      />
+      /> */}
     </Box>
   );
 };
