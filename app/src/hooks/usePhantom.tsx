@@ -9,7 +9,7 @@ const usePhantom = () => {
       if (typeof window !== "undefined" && window!.solana) {
         setIsPhantom(true);
       }
-    }, 200);
+    }, 1000);
   }, []);
 
   return isPhantom;
