@@ -9,8 +9,8 @@ interface Props {
 }
 
 const DEFAULT_TITLE = "Fluxus";
-const DEFAULT_DESCRIPTION = "";
-const URL = "";
+const DEFAULT_DESCRIPTION = "Fluxus | A payment streaming dApp.";
+const URL = "fluxus.saicharanpogul.xyz";
 const DEFAULT_OG_IMAGE = `${URL}/ogImage.png`;
 
 const PageMeta: React.FC<Props> = ({ title, description, ogImage }) => {
