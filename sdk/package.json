@@ -4,7 +4,6 @@
   "description": "Typescript SDK for Fluxus",
   "author": "Saicharan Pogul <pogul1804@gmail.com>",
   "license": "MIT",
-  "private": true,
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
