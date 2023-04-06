@@ -2,7 +2,8 @@
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
-    "copy": "cp target/idl/fluxus.json app/src/constants/fluxus.json && cp target/types/fluxus.ts app/src/types/fluxus.ts"
+    "copy:app": "cp target/idl/fluxus.json app/src/constants/fluxus.json && cp target/types/fluxus.ts app/src/types/fluxus.ts",
+    "copy:sdk": "cp target/idl/fluxus.json sdk/idl/fluxus.json && cp target/types/fluxus.ts sdk/types/fluxus.ts"
   },
   "dependencies": {
     "@metaplex-foundation/js": "^0.18.3",

@@ -1,0 +1,42 @@
+{
+  "name": "fluxus-sdk",
+  "version": "0.0.1",
+  "description": "Typescript SDK for Fluxus",
+  "author": "Saicharan Pogul <pogul1804@gmail.com>",
+  "license": "MIT",
+  "private": true,
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib/**/*"
+  ],
+  "types": "lib/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saicharanpogul/fluxus"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepare": "yarn build",
+    "test": "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.3.4",
+    "@types/mocha": "^10.0.1",
+    "@types/node-fetch": "^2.6.3",
+    "chai": "^4.3.7",
+    "mocha": "^10.2.0",
+    "ts-mocha": "^10.0.0",
+    "typescript": "^5.0.3"
+  },
+  "dependencies": {
+    "@project-serum/anchor": "^0.26.0",
+    "@solana/spl-token": "^0.3.7",
+    "@solana/web3.js": "^1.75.0"
+  },
+  "keywords": [
+    "Solana",
+    "Payments"
+  ],
+  "homepage": "https://github.com/saicharanpogul/fluxus"
+}
