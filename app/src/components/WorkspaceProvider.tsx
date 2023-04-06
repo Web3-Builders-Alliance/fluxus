@@ -1,23 +1,17 @@
-import idl from "@/constants/fluxus.json";
-import { Fluxus, IDL } from "@/types/fluxus";
-import * as anchor from "@project-serum/anchor";
-import {
-  AnchorProvider,
-  Idl,
-  Program,
-  setProvider,
-} from "@project-serum/anchor";
+import { AnchorProvider, Program, setProvider } from "@project-serum/anchor";
 import { useAnchorWallet, useConnection } from "@solana/wallet-adapter-react";
 import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
+import { Fluxus, FLUXUS_PROGRAM_ID } from "fluxus-sdk";
 import { createContext, useContext } from "react";
 
 const WorkspaceContext = createContext({});
-const programId = new PublicKey(idl.metadata.address);
+const programId = FLUXUS_PROGRAM_ID;
 
 interface Workspace {
   connection?: Connection;
   provider?: AnchorProvider;
-  program?: Program<Fluxus>;
+  program?: Program;
+  programId?: PublicKey;
   getConstantFluxPda?: (
     authority: PublicKey,
     receiver: PublicKey,
@@ -39,47 +33,14 @@ const WorkspaceProvider = ({ children }: any) => {
   const { connection } = useConnection();
   const provider = new AnchorProvider(connection, wallet, {});
   setProvider(provider);
-  const program = new Program(IDL as Idl, programId);
-
-  const getConstantFluxPda = (
-    authority: PublicKey,
-    receiver: PublicKey,
-    fluxId: string
-  ) => {
-    return anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(anchor.utils.bytes.utf8.encode("constant_flux")),
-        authority.toBuffer(),
-        receiver.toBuffer(),
-        Buffer.from(fluxId),
-      ],
-      program.programId
-    );
-  };
-
-  const getVaultPda = (fluxId: string) => {
-    return PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(anchor.utils.bytes.utf8.encode("token-seed")),
-        Buffer.from(fluxId),
-      ],
-      program.programId
-    );
-  };
-
-  const getVaultAuthority = () =>
-    PublicKey.findProgramAddressSync(
-      [Buffer.from(anchor.utils.bytes.utf8.encode("escrow"))],
-      program.programId
-    );
+  const fluxus = new Fluxus(connection);
+  const program = fluxus.program;
 
   const workspace = {
     connection,
     provider,
     program,
-    getConstantFluxPda,
-    getVaultPda,
-    getVaultAuthority,
+    programId,
   };
   return (
     <WorkspaceContext.Provider value={workspace}>

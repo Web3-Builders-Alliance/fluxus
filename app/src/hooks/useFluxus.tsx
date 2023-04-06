@@ -1,25 +1,13 @@
 import { useWorkspace } from "@/components/WorkspaceProvider";
 import { getUrls, NETWORK } from "@/utils";
-import * as anchor from "@project-serum/anchor";
-import {
-  createAssociatedTokenAccountInstruction,
-  getAssociatedTokenAddressSync,
-  getOrCreateAssociatedTokenAccount,
-  TOKEN_PROGRAM_ID,
-} from "@solana/spl-token";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Connection, PublicKey, Transaction } from "@solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
+import { Fluxus } from "fluxus-sdk";
 import { useCallback, useEffect, useState } from "react";
 import useTransactionToast from "./useTransactionToast";
 
 const useFluxus = (fetchAccounts = false) => {
-  const {
-    connection,
-    program,
-    getConstantFluxPda,
-    getVaultPda,
-    getVaultAuthority,
-  } = useWorkspace();
+  const { connection, program } = useWorkspace();
   const walletAdapter = useWallet();
   const transactionToast = useTransactionToast();
 
@@ -35,9 +23,6 @@ const useFluxus = (fetchAccounts = false) => {
     asReceiverConstantFluxAccountsLoading,
     setAsReceiverConstantFluxAccountsLoading,
   ] = useState(fetchAccounts);
-
-  const [instantDistributionLoading, setInstantDistributionLoading] =
-    useState(false);
 
   const getAsCreatorConstantFluxAccounts = useCallback(async () => {
     if (!walletAdapter.connected || !walletAdapter.publicKey)
@@ -105,79 +90,73 @@ const useFluxus = (fetchAccounts = false) => {
       days: number
     ) => {
       try {
-        if (
-          !walletAdapter.connected ||
-          !walletAdapter.publicKey ||
-          !getConstantFluxPda ||
-          !getVaultPda
-        )
-          return;
-        const [constantFlux] = getConstantFluxPda(
+        if (!walletAdapter.connected || !walletAdapter.publicKey) return;
+        // const [constantFlux] = getConstantFluxPda(
+        //   walletAdapter.publicKey,
+        //   receiver,
+        //   fluxId
+        // );
+        // const authorityTokenAccount = getAssociatedTokenAddressSync(
+        //   mint,
+        //   walletAdapter.publicKey
+        // );
+        // const [vault] = getVaultPda(fluxId);
+        // const receiverTokenAccountInfo =
+        //   await connection?.getTokenAccountsByOwner(receiver, {
+        //     mint,
+        //     programId: TOKEN_PROGRAM_ID,
+        //   });
+        // const receiverTokenAccountKey = getAssociatedTokenAddressSync(
+        //   mint,
+        //   receiver
+        // );
+        // const recentBlockhash =
+        //   await program?.provider.connection.getLatestBlockhash();
+        // const tx = new Transaction({
+        //   recentBlockhash: recentBlockhash?.blockhash,
+        // });
+        // if (receiverTokenAccountInfo?.value.length === 0) {
+        //   tx.add(
+        //     createAssociatedTokenAccountInstruction(
+        //       walletAdapter.publicKey,
+        //       receiverTokenAccountKey,
+        //       receiver,
+        //       mint
+        //     )
+        //   );
+        // }
+        // tx.add(
+        //   (await program?.methods
+        //     .createConstantFlux(
+        //       new anchor.BN(amount * 10 ** decimals),
+        //       fluxId,
+        //       days
+        //     )
+        //     .accounts({
+        //       authority: walletAdapter.publicKey,
+        //       recipient: receiver,
+        //       constantFlux: constantFlux,
+        //       mint: mint,
+        //       authorityTokenAccount,
+        //       recipientTokenAccount: receiverTokenAccountKey,
+        //       vault,
+        //     })
+        //     .signers([])
+        //     .transaction()) as Transaction
+        // );
+        // tx.feePayer = walletAdapter.publicKey;
+        const fluxus = new Fluxus(connection as Connection);
+        const { transaction, account } = await fluxus.createConstantFlux(
           walletAdapter.publicKey,
+          mint,
           receiver,
-          fluxId
+          fluxId,
+          amount,
+          decimals,
+          days
         );
-        const authorityTokenAccount = getAssociatedTokenAddressSync(
-          mint,
-          walletAdapter.publicKey
-        );
-        const [vault] = getVaultPda(fluxId);
-        // const receiverTokenAccount = anchor.web3.Keypair.generate();
-        const receiverTokenAccountInfo =
-          await connection?.getTokenAccountsByOwner(receiver, {
-            mint,
-            programId: TOKEN_PROGRAM_ID,
-          });
-        const receiverTokenAccountKey = getAssociatedTokenAddressSync(
-          mint,
-          receiver
-        );
-        const recentBlockhash =
-          await program?.provider.connection.getLatestBlockhash();
-        const tx = new Transaction({
-          recentBlockhash: recentBlockhash?.blockhash,
-        });
-        if (receiverTokenAccountInfo?.value.length === 0) {
-          tx.add(
-            createAssociatedTokenAccountInstruction(
-              walletAdapter.publicKey,
-              receiverTokenAccountKey,
-              receiver,
-              mint
-            )
-          );
-        }
-        console.log({
-          authority: walletAdapter.publicKey.toBase58(),
-          recipient: receiver.toBase58(),
-          constantFlux: constantFlux.toBase58(),
-          mint: mint.toBase58(),
-          authorityTokenAccount: authorityTokenAccount.toBase58(),
-          receiverTokenAccount: receiverTokenAccountKey.toBase58(),
-          vault: vault.toBase58(),
-        });
-        tx.add(
-          (await program?.methods
-            .createConstantFlux(
-              new anchor.BN(amount * 10 ** decimals),
-              fluxId,
-              days
-            )
-            .accounts({
-              authority: walletAdapter.publicKey,
-              recipient: receiver,
-              constantFlux: constantFlux,
-              mint: mint,
-              authorityTokenAccount,
-              recipientTokenAccount: receiverTokenAccountKey,
-              vault,
-            })
-            .signers([])
-            .transaction()) as Transaction
-        );
-        tx.feePayer = walletAdapter.publicKey;
         const sig = await walletAdapter.sendTransaction(
-          tx,
+          transaction,
           connection as Connection,
           {
             signers: [],
@@ -188,6 +167,12 @@ const useFluxus = (fetchAccounts = false) => {
           getUrls(NETWORK, sig as string, "tx")?.explorer
         );
         transactionToast(sig as string, "tx");
+        const {
+          constantFlux,
+          authorityTokenAccount,
+          receiverTokenAccount,
+          vault,
+        } = account;
         return {
           signature: sig,
           account: {
@@ -196,7 +181,7 @@ const useFluxus = (fetchAccounts = false) => {
             constantFlux: constantFlux.toBase58(),
             mint: mint.toBase58(),
             authorityTokenAccount: authorityTokenAccount.toBase58(),
-            receiverTokenAccount: receiverTokenAccountKey.toBase58(),
+            receiverTokenAccount: receiverTokenAccount.toBase58(),
             vault: vault.toBase58(),
           },
         };
@@ -205,62 +190,54 @@ const useFluxus = (fetchAccounts = false) => {
         throw error;
       }
     },
-    [
-      connection,
-      getConstantFluxPda,
-      getVaultPda,
-      program?.methods,
-      program?.provider.connection,
-      transactionToast,
-      walletAdapter,
-    ]
+    [connection, transactionToast, walletAdapter]
   );
 
   const cancelConstantFlux = useCallback(
     async (mint: PublicKey, receiver: PublicKey, fluxId: string) => {
       try {
-        if (
-          !walletAdapter.connected ||
-          !walletAdapter.publicKey ||
-          !getConstantFluxPda ||
-          !getVaultPda ||
-          !getVaultAuthority
-        )
-          return;
-        const [constantFlux] = getConstantFluxPda(
+        if (!walletAdapter.connected || !walletAdapter.publicKey) return;
+        // const [constantFlux] = getConstantFluxPda(
+        //   walletAdapter.publicKey,
+        //   receiver,
+        //   fluxId
+        // );
+        // const authorityTokenAccount = getAssociatedTokenAddressSync(
+        //   mint,
+        //   walletAdapter.publicKey
+        // );
+        // const [vault] = getVaultPda(fluxId);
+        // const [vaultAuthority] = getVaultAuthority();
+        // const recentBlockhash =
+        //   await program?.provider.connection.getLatestBlockhash();
+        // const tx = new Transaction({
+        //   recentBlockhash: recentBlockhash?.blockhash,
+        // });
+        // tx.add(
+        //   (await program?.methods
+        //     .closeConstantFlux(fluxId)
+        //     .accounts({
+        //       authority: walletAdapter.publicKey,
+        //       recipient: receiver,
+        //       constantFlux: constantFlux,
+        //       mint: mint,
+        //       authorityTokenAccount,
+        //       vault,
+        //       vaultAuthority,
+        //     })
+        //     .signers([])
+        //     .transaction()) as Transaction
+        // );
+        // tx.feePayer = walletAdapter.publicKey;
+        const fluxus = new Fluxus(connection as Connection);
+        const { transaction } = await fluxus.cancelConstantFlux(
           walletAdapter.publicKey,
+          mint,
           receiver,
           fluxId
         );
-        const authorityTokenAccount = getAssociatedTokenAddressSync(
-          mint,
-          walletAdapter.publicKey
-        );
-        const [vault] = getVaultPda(fluxId);
-        const [vaultAuthority] = getVaultAuthority();
-        const recentBlockhash =
-          await program?.provider.connection.getLatestBlockhash();
-        const tx = new Transaction({
-          recentBlockhash: recentBlockhash?.blockhash,
-        });
-        tx.add(
-          (await program?.methods
-            .closeConstantFlux(fluxId)
-            .accounts({
-              authority: walletAdapter.publicKey,
-              recipient: receiver,
-              constantFlux: constantFlux,
-              mint: mint,
-              authorityTokenAccount,
-              vault,
-              vaultAuthority,
-            })
-            .signers([])
-            .transaction()) as Transaction
-        );
-        tx.feePayer = walletAdapter.publicKey;
         const sig = await walletAdapter.sendTransaction(
-          tx,
+          transaction,
           connection as Connection,
           {
             signers: [],
@@ -280,11 +257,6 @@ const useFluxus = (fetchAccounts = false) => {
     [
       connection,
       getAsCreatorConstantFluxAccounts,
-      getConstantFluxPda,
-      getVaultAuthority,
-      getVaultPda,
-      program?.methods,
-      program?.provider.connection,
       transactionToast,
       walletAdapter,
     ]
@@ -298,44 +270,99 @@ const useFluxus = (fetchAccounts = false) => {
       receiverTokenAccount: PublicKey
     ) => {
       try {
-        if (
-          !walletAdapter.connected ||
-          !walletAdapter.publicKey ||
-          !getConstantFluxPda ||
-          !getVaultPda ||
-          !getVaultAuthority
-        )
-          return;
-        const [constantFlux] = getConstantFluxPda(
+        if (!walletAdapter.connected || !walletAdapter.publicKey) return;
+        // const [constantFlux] = getConstantFluxPda(
+        //   authority,
+        //   walletAdapter.publicKey,
+        //   fluxId
+        // );
+        // const [vault] = getVaultPda(fluxId);
+        // const [vaultAuthority] = getVaultAuthority();
+        // const recentBlockhash =
+        //   await program?.provider.connection.getLatestBlockhash();
+        // const tx = new Transaction({
+        //   recentBlockhash: recentBlockhash?.blockhash,
+        // });
+        // tx.add(
+        //   (await program?.methods
+        //     .claimConstantFlux(fluxId)
+        //     .accounts({
+        //       authority,
+        //       recipient: walletAdapter.publicKey,
+        //       constantFlux,
+        //       mint,
+        //       recipientTokenAccount: receiverTokenAccount,
+        //       vaultAuthority,
+        //       vault,
+        //     })
+        //     .signers([])
+        //     .transaction()) as Transaction
+        // );
+        // tx.feePayer = walletAdapter.publicKey;
+
+        //   walletAdapter.publicKey,
+        //   receiver,
+        //   fluxId
+        // );
+        // const authorityTokenAccount = getAssociatedTokenAddressSync(
+        //   mint,
+        //   walletAdapter.publicKey
+        // );
+        // const [vault] = getVaultPda(fluxId);
+        // const receiverTokenAccountInfo =
+        //   await connection?.getTokenAccountsByOwner(receiver, {
+        //     mint,
+        //     programId: TOKEN_PROGRAM_ID,
+        //   });
+        // const receiverTokenAccountKey = getAssociatedTokenAddressSync(
+        //   mint,
+        //   receiver
+        // );
+        // const recentBlockhash =
+        //   await program?.provider.connection.getLatestBlockhash();
+        // const tx = new Transaction({
+        //   recentBlockhash: recentBlockhash?.blockhash,
+        // });
+        // if (receiverTokenAccountInfo?.value.length === 0) {
+        //   tx.add(
+        //     createAssociatedTokenAccountInstruction(
+        //       walletAdapter.publicKey,
+        //       receiverTokenAccountKey,
+        //       receiver,
+        //       mint
+        //     )
+        //   );
+        // }
+        // tx.add(
+        //   (await program?.methods
+        //     .createConstantFlux(
+        //       new anchor.BN(amount * 10 ** decimals),
+        //       fluxId,
+        //       days
+        //     )
+        //     .accounts({
+        //       authority: walletAdapter.publicKey,
+        //       recipient: receiver,
+        //       constantFlux: constantFlux,
+        //       mint: mint,
+        //       authorityTokenAccount,
+        //       recipientTokenAccount: receiverTokenAccountKey,
+        //       vault,
+        //     })
+        //     .signers([])
+        //     .transaction()) as Transaction
+        // );
+        // tx.feePayer = walletAdapter.publicKey;
+        const fluxus = new Fluxus(connection as Connection);
+        const { transaction } = await fluxus.claimConstantFlux(
+          mint,
           authority,
           walletAdapter.publicKey,
-          fluxId
+          fluxId,
+          receiverTokenAccount
         );
-        const [vault] = getVaultPda(fluxId);
-        const [vaultAuthority] = getVaultAuthority();
-        const recentBlockhash =
-          await program?.provider.connection.getLatestBlockhash();
-        const tx = new Transaction({
-          recentBlockhash: recentBlockhash?.blockhash,
-        });
-        tx.add(
-          (await program?.methods
-            .claimConstantFlux(fluxId)
-            .accounts({
-              authority,
-              recipient: walletAdapter.publicKey,
-              constantFlux,
-              mint,
-              recipientTokenAccount: receiverTokenAccount,
-              vaultAuthority,
-              vault,
-            })
-            .signers([])
-            .transaction()) as Transaction
-        );
-        tx.feePayer = walletAdapter.publicKey;
         const sig = await walletAdapter.sendTransaction(
-          tx,
+          transaction,
           connection as Connection,
           {
             signers: [],
@@ -356,11 +383,6 @@ const useFluxus = (fetchAccounts = false) => {
     [
       connection,
       getAsReceiverConstantFluxAccounts,
-      getConstantFluxPda,
-      getVaultAuthority,
-      getVaultPda,
-      program?.methods,
-      program?.provider.connection,
       transactionToast,
       walletAdapter,
     ]
@@ -376,78 +398,87 @@ const useFluxus = (fetchAccounts = false) => {
     ) => {
       try {
         if (!walletAdapter.connected || !walletAdapter.publicKey) return;
-        const basisPointsShares = shares.map((share) => share * 100);
-        const authorityTokenAccount = getAssociatedTokenAddressSync(
+        // const basisPointsShares = shares.map((share) => share * 100);
+        // const authorityTokenAccount = getAssociatedTokenAddressSync(
+        //   mint,
+        //   walletAdapter.publicKey
+        // );
+        // let remainingAccounts: {
+        //   pubkey: PublicKey;
+        //   isSigner: boolean;
+        //   isWritable: boolean;
+        // }[] = [];
+        // const recentBlockhash =
+        //   await program?.provider.connection.getLatestBlockhash();
+        // const tx = new Transaction({
+        //   recentBlockhash: recentBlockhash?.blockhash,
+        // });
+        // for await (let receiver of receivers) {
+        //   remainingAccounts.push({
+        //     pubkey: receiver,
+        //     isSigner: false,
+        //     isWritable: false,
+        //   });
+        //   const receiverTokenAccount =
+        //     await connection?.getTokenAccountsByOwner(receiver, {
+        //       mint,
+        //       programId: TOKEN_PROGRAM_ID,
+        //     });
+        //   if (receiverTokenAccount?.value.length === 0) {
+        //     const receiverTokenAccountKey = getAssociatedTokenAddressSync(
+        //       mint,
+        //       receiver
+        //     );
+        //     tx.add(
+        //       createAssociatedTokenAccountInstruction(
+        //         walletAdapter.publicKey,
+        //         receiverTokenAccountKey,
+        //         receiver,
+        //         mint
+        //       )
+        //     );
+        //     remainingAccounts.push({
+        //       pubkey: receiverTokenAccountKey,
+        //       isSigner: false,
+        //       isWritable: true,
+        //     });
+        //   } else {
+        //     const receiverTokenAccountKey = receiverTokenAccount?.value[0]
+        //       .pubkey as PublicKey;
+        //     remainingAccounts.push({
+        //       pubkey: receiverTokenAccountKey,
+        //       isSigner: false,
+        //       isWritable: true,
+        //     });
+        //   }
+        // }
+        // tx.add(
+        //   (await program?.methods
+        //     .instantDistributionFlux(
+        //       new anchor.BN(amount * 10 ** decimals),
+        //       basisPointsShares
+        //     )
+        //     .accounts({
+        //       authority: walletAdapter.publicKey,
+        //       authorityTokenAccount,
+        //       mint,
+        //     })
+        //     .remainingAccounts(remainingAccounts)
+        //     .signers([])
+        //     .transaction()) as Transaction
+        // );
+        // tx.feePayer = walletAdapter.publicKey;
+        const fluxus = new Fluxus(connection as Connection);
+        const { transaction } = await fluxus.instantDistributionFlux(
+          walletAdapter.publicKey,
           mint,
-          walletAdapter.publicKey
+          receivers,
+          amount,
+          decimals,
+          shares
         );
-        let remainingAccounts: {
-          pubkey: PublicKey;
-          isSigner: boolean;
-          isWritable: boolean;
-        }[] = [];
-        const recentBlockhash =
-          await program?.provider.connection.getLatestBlockhash();
-        const tx = new Transaction({
-          recentBlockhash: recentBlockhash?.blockhash,
-        });
-        for await (let receiver of receivers) {
-          remainingAccounts.push({
-            pubkey: receiver,
-            isSigner: false,
-            isWritable: false,
-          });
-          const receiverTokenAccount =
-            await connection?.getTokenAccountsByOwner(receiver, {
-              mint,
-              programId: TOKEN_PROGRAM_ID,
-            });
-          if (receiverTokenAccount?.value.length === 0) {
-            const receiverTokenAccountKey = getAssociatedTokenAddressSync(
-              mint,
-              receiver
-            );
-            tx.add(
-              createAssociatedTokenAccountInstruction(
-                walletAdapter.publicKey,
-                receiverTokenAccountKey,
-                receiver,
-                mint
-              )
-            );
-            remainingAccounts.push({
-              pubkey: receiverTokenAccountKey,
-              isSigner: false,
-              isWritable: true,
-            });
-          } else {
-            const receiverTokenAccountKey = receiverTokenAccount?.value[0]
-              .pubkey as PublicKey;
-            remainingAccounts.push({
-              pubkey: receiverTokenAccountKey,
-              isSigner: false,
-              isWritable: true,
-            });
-          }
-        }
-        tx.add(
-          (await program?.methods
-            .instantDistributionFlux(
-              new anchor.BN(amount * 10 ** decimals),
-              basisPointsShares
-            )
-            .accounts({
-              authority: walletAdapter.publicKey,
-              authorityTokenAccount,
-              mint,
-            })
-            .remainingAccounts(remainingAccounts)
-            .signers([])
-            .transaction()) as Transaction
-        );
-        tx.feePayer = walletAdapter.publicKey;
         const sig = await walletAdapter.sendTransaction(
-          tx,
+          transaction,
           connection as Connection,
           {
             signers: [],
@@ -463,13 +494,7 @@ const useFluxus = (fetchAccounts = false) => {
         throw error;
       }
     },
-    [
-      connection,
-      program?.methods,
-      program?.provider.connection,
-      transactionToast,
-      walletAdapter,
-    ]
+    [connection, transactionToast, walletAdapter]
   );
 
   useEffect(() => {
