@@ -32,6 +32,7 @@ describe("Test FluxusWithWallet", () => {
         admin,
         "Fluxus",
         "FXS",
+        9,
         "Fluxus is the payment streaming service.",
         "https://cdn.discordapp.com/attachments/1076555204763324447/1086732336948838590/fluxus.png"
       );

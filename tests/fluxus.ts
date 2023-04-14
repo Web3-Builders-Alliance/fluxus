@@ -39,6 +39,7 @@ describe("fluxus", () => {
         admin,
         "Fluxus",
         "FXS",
+        9,
         "Fluxus is the payment streaming service.",
         "https://cdn.discordapp.com/attachments/1076555204763324447/1086732336948838590/fluxus.png"
       );
@@ -49,7 +50,7 @@ describe("fluxus", () => {
     }
   });
 
-  it("Mint 1M Fluxus:", async () => {
+  it("Mint 1B Fluxus:", async () => {
     try {
       const admin = await initializeKeypair(
         program.provider.connection,
@@ -62,10 +63,10 @@ describe("fluxus", () => {
       await mintTokens(
         program.provider.connection,
         mint,
-        user.publicKey,
+        new PublicKey("cjB6FsoexZ9uqXjqiUcr42rgXDdMfBixwcuUoUn6YNY"),
         user,
         admin,
-        1000000
+        1000000000
       );
     } catch (error) {
       console.log(error);
@@ -530,6 +531,7 @@ describe("fluxus", () => {
         .rpc();
       console.log(
         "Signature:",
+
         getUrls(Network[program.provider.connection.rpcEndpoint], sig, "tx")
           .explorer
       );

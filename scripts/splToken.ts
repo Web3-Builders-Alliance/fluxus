@@ -23,6 +23,7 @@ export const initializeMint = async (
   payer: Keypair,
   tokenName: string,
   symbol: string,
+  decimals: number,
   description: string,
   imageUri: string,
   programId?: PublicKey
@@ -62,7 +63,7 @@ export const initializeMint = async (
     // This will create a token with all the necessary inputs
     const {
       mint: { address: tokenMint },
-    } = await metaplex.tokens().createMint({ decimals: 9 });
+    } = await metaplex.tokens().createMint({ decimals });
 
     // Finding out the address where the metadata is stored
     const metadataPda = metaplex.nfts().pdas().metadata({ mint: tokenMint });
