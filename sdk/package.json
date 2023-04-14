@@ -1,6 +1,6 @@
 {
   "name": "fluxus-sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Typescript SDK for Fluxus",
   "author": "Saicharan Pogul <pogul1804@gmail.com>",
   "license": "MIT",
